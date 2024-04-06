@@ -1,0 +1,35 @@
+# Blender 4.0.2 MTL File: 'None'
+# www.blender.org
+
+newmtl StoneFloor
+Ns 159.999985
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd StoneFloor_baseColor.jpeg
+map_Bump -bm 1.000000 StoneFloor_normal.png
+
+newmtl StoneFloorDetails
+Ns 159.999985
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 2
+map_Kd StoneFloorDetails_baseColor.jpeg
+map_Bump -bm 1.000000 StoneFloorDetails_normal.png
+
+newmtl StoneFloorGrass
+Ns 159.999985
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd StoneFloorGrass_baseColor.png
+map_d StoneFloorGrass_baseColor.png
+map_Bump -bm 1.000000 StoneFloorGrass_normal.png

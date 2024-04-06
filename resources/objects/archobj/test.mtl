@@ -1,0 +1,108 @@
+newmtl Volume7_copy000
+Ns 100.000
+d 1.00000
+illum 2
+Kd 1.00000 1.00000 1.00000
+Ka 0.00000 0.00000 0.00000
+Ks 1.00000 1.00000 1.00000
+Ke 0.00000e+0 0.00000e+0 0.00000e+0
+map_Kd test_diffuse.png
+map_Ks test_roughness.png
+bump test_displacement.png
+map_bump test_normalmap.png
+newmtl Volume7_copy006
+Ns 100.000
+d 1.00000
+illum 2
+Kd 1.00000 1.00000 1.00000
+Ka 0.00000 0.00000 0.00000
+Ks 1.00000 1.00000 1.00000
+Ke 0.00000e+0 0.00000e+0 0.00000e+0
+map_Kd test_diffuse.png
+map_Ks test_roughness.png
+bump test_displacement.png
+map_bump test_normalmap.png
+newmtl Volume7_copy007
+Ns 100.000
+d 1.00000
+illum 2
+Kd 1.00000 1.00000 1.00000
+Ka 0.00000 0.00000 0.00000
+Ks 1.00000 1.00000 1.00000
+Ke 0.00000e+0 0.00000e+0 0.00000e+0
+map_Kd test_diffuse.png
+map_Ks test_roughness.png
+bump test_displacement.png
+map_bump test_normalmap.png
+newmtl Volume7
+Ns 100.000
+d 1.00000
+illum 2
+Kd 1.00000 1.00000 1.00000
+Ka 0.00000 0.00000 0.00000
+Ks 1.00000 1.00000 1.00000
+Ke 0.00000e+0 0.00000e+0 0.00000e+0
+map_Kd test_diffuse.png
+map_Ks test_roughness.png
+bump test_displacement.png
+map_bump test_normalmap.png
+newmtl Volume7_copy004
+Ns 100.000
+d 1.00000
+illum 2
+Kd 1.00000 1.00000 1.00000
+Ka 0.00000 0.00000 0.00000
+Ks 1.00000 1.00000 1.00000
+Ke 0.00000e+0 0.00000e+0 0.00000e+0
+map_Kd test_diffuse.png
+map_Ks test_roughness.png
+bump test_displacement.png
+map_bump test_normalmap.png
+newmtl Volume7_copy005
+Ns 100.000
+d 1.00000
+illum 2
+Kd 1.00000 1.00000 1.00000
+Ka 0.00000 0.00000 0.00000
+Ks 1.00000 1.00000 1.00000
+Ke 0.00000e+0 0.00000e+0 0.00000e+0
+map_Kd test_diffuse.png
+map_Ks test_roughness.png
+bump test_displacement.png
+map_bump test_normalmap.png
+newmtl Volume7_copy001
+Ns 100.000
+d 1.00000
+illum 2
+Kd 1.00000 1.00000 1.00000
+Ka 0.00000 0.00000 0.00000
+Ks 1.00000 1.00000 1.00000
+Ke 0.00000e+0 0.00000e+0 0.00000e+0
+map_Kd test_diffuse.png
+map_Ks test_roughness.png
+bump test_displacement.png
+map_bump test_normalmap.png
+newmtl Volume7_copy002
+Ns 100.000
+d 1.00000
+illum 2
+Kd 1.00000 1.00000 1.00000
+Ka 0.00000 0.00000 0.00000
+Ks 1.00000 1.00000 1.00000
+Ke 0.00000e+0 0.00000e+0 0.00000e+0
+map_Kd test_diffuse.png
+map_Ks test_roughness.png
+bump test_displacement.png
+map_bump test_normalmap.png
+newmtl Volume7_copy003
+Ns 100.000
+d 1.00000
+illum 2
+Kd 1.00000 1.00000 1.00000
+Ka 0.00000 0.00000 0.00000
+Ks 1.00000 1.00000 1.00000
+Ke 0.00000e+0 0.00000e+0 0.00000e+0
+map_Kd test_diffuse.png
+map_Ks test_roughness.png
+bump test_displacement.png
+map_bump test_normalmap.png
