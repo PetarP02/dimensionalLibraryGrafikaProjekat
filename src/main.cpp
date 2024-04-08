@@ -77,7 +77,7 @@ float skyboxVertices[] = {
 // settings
 const unsigned int SCR_WIDTH = 1200;
 const unsigned int SCR_HEIGHT = 750;
-
+float exposure = 1.0f;
 // camera
 
 float lastX = SCR_WIDTH / 2.0f;
@@ -97,6 +97,22 @@ struct PointLight {
     float constant;
     float linear;
     float quadratic;
+};
+
+struct SpotLight {
+    glm::vec3 position;
+    glm::vec3 direction;
+
+    glm::vec3 ambient;
+    glm::vec3 diffuse;
+    glm::vec3 specular;
+
+    float constant;
+    float linear;
+    float quadratic;
+
+    float cutOff;
+    float outerCutOff;
 };
 
 struct ProgramState {
@@ -164,6 +180,7 @@ struct ProgramState {
     float bookcaseScale = 0.15f;
 
     PointLight pointLight;
+    SpotLight spotLight;
     ProgramState()
             : camera(glm::vec3(0.0f, 0.0f, 3.0f)) {}
 
@@ -269,9 +286,32 @@ int main() {
     // -------------------------
     Shader ourShader("resources/shaders/2.model_lighting.vs", "resources/shaders/2.model_lighting.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
+//  Shader hdrShader ("resources/shaders/hdr.vs", "resources/shaders/hdr.fs");
+// HDR
+//    unsigned int hdrFBO;
+//    glGenFramebuffers(1, &hdrFBO);
+//
+//    unsigned int colorBuffer;
+//    glGenTextures(1, &colorBuffer);
+//    glBindTexture(GL_TEXTURE_2D, colorBuffer);
+//    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//
+//    unsigned int rboDepth;
+//    glGenRenderbuffers(1, &rboDepth);
+//    glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+//    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
+//
+//    glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+//    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
+//    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+//    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+//        std::cout << "Framebuffer not complete!\n";
+//    }
+//    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // skybox vertex initialization
-
+    // skybox
     unsigned int skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
     glGenBuffers(1, &skyboxVBO);
@@ -361,28 +401,44 @@ int main() {
     // tell stb_image.h to flip loaded texture's on the y-axis (before loading model).
     stbi_set_flip_vertically_on_load(true);
 
-
     PointLight& pointLight = programState->pointLight;
-    //pointLight.position = glm::vec3(8.0f, 13.0f, 1.0f);
-    pointLight.ambient = glm::vec3(0.005f);
+    pointLight.ambient = glm::vec3(0.05f);
     pointLight.diffuse = glm::vec3(1.0f, 0.77f, 0.35f);
     pointLight.specular = glm::vec3(1.0f, 0.77f, 0.35f);
 
-    pointLight.constant = 10.0f;
-    pointLight.linear = 30.0f;
-    pointLight.quadratic = 30.0f;
+    pointLight.constant = 0.25f;
+    pointLight.linear = 1.0f;
+    pointLight.quadratic = 1.0f;
+
+    SpotLight& spotLight = programState->spotLight;
+    spotLight.ambient = glm::vec3(0.5f);
+    spotLight.diffuse = glm::vec3(1.0f, 0.77f, 0.77f);
+    spotLight.specular = glm::vec3(1.0f, 0.77f, 0.35f);
+
+    spotLight.constant = 1.0f;
+    spotLight.linear = 0.05f;
+    spotLight.quadratic = 0.009f;
+
+    spotLight.cutOff = 30.0f;
+    spotLight.outerCutOff = 45.0f;
 
     //pozicija plamena svake svece
     vector<glm::vec3> sveceSvetlo = {
             glm::vec3 (-0.298f, 12.49f, 1.649f),
             glm::vec3 (-0.417f, 12.658f, 1.275f),
             glm::vec3 (-0.518f, 12.984f, 1.484f),
-            glm::vec3 (1.713f, 11.543f, -2.497f),
+            glm::vec3 (1.713f, 11.610f, -2.497f),
             glm::vec3 (1.392f, 11.260f, -2.630f),
             glm::vec3 (1.293f, 11.151f, -2.282f),
             glm::vec3 (1.729f, 10.508f, 2.998f),
             glm::vec3 (1.291f, 10.109f, 3.254f),
-            glm::vec3 (1.355f, 10.223f, 2.812f)
+            glm::vec3 (1.743f, 10.585f, 3.009f)
+    };
+
+    vector<glm::vec3> lampeSvetlo = {
+            glm::vec3 (11.492f, 14.181f, -11.498f),
+            glm::vec3 (15.989f, 14.181f, 14.922f),
+            glm::vec3 (-0.488f, 14.181f, 6.494f)
     };
 
     // draw in wireframe
@@ -411,13 +467,46 @@ int main() {
         ourShader.use();
         for(int i = 0; i < 9; i++) {
             ourShader.setVec3("pointLights["+ to_string(i) +"].position", sveceSvetlo[i]);
+
             ourShader.setVec3("pointLights["+ to_string(i) +"].ambient", pointLight.ambient);
             ourShader.setVec3("pointLights["+ to_string(i) +"].diffuse", pointLight.diffuse);
             ourShader.setVec3("pointLights["+ to_string(i) +"].specular", pointLight.specular);
+
             ourShader.setFloat("pointLights["+ to_string(i) +"].constant", pointLight.constant);
             ourShader.setFloat("pointLights["+ to_string(i) +"].linear", pointLight.linear);
             ourShader.setFloat("pointLights["+ to_string(i) +"].quadratic", pointLight.quadratic);
         }
+
+        for(int i = 0; i < 3; i++) {
+            ourShader.setVec3("spotLights["+ to_string(i) +"].position", lampeSvetlo[i]);
+            ourShader.setVec3("spotLights["+ to_string(i) +"].direction", glm::vec3 (0, -1, 0));
+
+            ourShader.setVec3("spotLights["+ to_string(i) +"].ambient", spotLight.ambient);
+            ourShader.setVec3("spotLights["+ to_string(i) +"].diffuse", spotLight.diffuse);
+            ourShader.setVec3("spotLights["+ to_string(i) +"].specular", spotLight.specular);
+
+            ourShader.setFloat("spotLights["+ to_string(i) +"].constant", spotLight.constant);
+            ourShader.setFloat("spotLights["+ to_string(i) +"].linear", spotLight.linear);
+            ourShader.setFloat("spotLights["+ to_string(i) +"].quadratic", spotLight.quadratic);
+
+            ourShader.setFloat("spotLights["+ to_string(i) +"].cutOff", glm::cos(glm::radians(spotLight.cutOff)));
+            ourShader.setFloat("spotLights["+ to_string(i) +"].outerCutOff", glm::cos(glm::radians(spotLight.outerCutOff)));
+        }
+
+        ourShader.setVec3("portalLight.position", glm::vec3(22.839f, 10.788f, -0.375f));
+        ourShader.setVec3("portalLight.direction", glm::vec3 (-1, 0, 0));
+
+        ourShader.setVec3("portalLight.ambient", spotLight.ambient);
+        ourShader.setVec3("portalLight.diffuse", glm::vec3(0.1f, 1.00f, 0.33f));
+        ourShader.setVec3("portalLight.specular", glm::vec3(0.1f, 1.00f, 0.33f));
+
+        ourShader.setFloat("portalLight.constant", 0.8f);
+        ourShader.setFloat("portalLight.linear", 0.01f);
+        ourShader.setFloat("portalLight.quadratic", 0.01f);
+
+        ourShader.setFloat("portalLight.cutOff", glm::cos(glm::radians(45.0f)));
+        ourShader.setFloat("portalLight.outerCutOff", glm::cos(glm::radians(60.0f)));
+
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
         // view/projection transformations
@@ -835,67 +924,67 @@ void DrawImGui(ProgramState *programState) {
         ImGui::SliderFloat("Float slider", &f, 0.0, 1.0);
         ImGui::ColorEdit3("Background color", (float *) &programState->clearColor);
 
-        ImGui::DragFloat3("Portal position", (float*)&programState->portalPosition);
-        ImGui::DragFloat("Portal scale", &programState->portalScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Arch position", (float*)&programState->archPosition);
-        ImGui::DragFloat("Arch scale", &programState->archScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Prozor position", (float*)&programState->prozorPosition);
-        ImGui::DragFloat("Prozor scale", &programState->prozorScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Lamp position", (float*)&programState->lampPosition);
-        ImGui::DragFloat("Lamp scale", &programState->lampScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Candle1 position", (float*)&programState->candle1Position);
-        ImGui::DragFloat("Candle1 scale", &programState->candle1Scale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Candle2 position", (float*)&programState->candle2Position);
-        ImGui::DragFloat("Candle2 scale", &programState->candle2Scale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("FloorGlobe position", (float*)&programState->floorglobePosition);
-        ImGui::DragFloat("FloorGlobe scale", &programState->floorglobeScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Globe position", (float*)&programState->globePostiotn);
-        ImGui::DragFloat("Globe scale", &programState->globeScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Book Stack position", (float*)&programState->bookStackPostiotn);
-        ImGui::DragFloat("Book Stack scale", &programState->bookStackScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Potion position", (float*)&programState->potionPostiotn);
-        ImGui::DragFloat("Potion scale", &programState->potionScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Plant position", (float*)&programState->plantPosition);
-        ImGui::DragFloat("Plant scale", &programState->plantScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Plant1 position", (float*)&programState->plant1Position);
-        ImGui::DragFloat("Plant1 scale", &programState->plant1Scale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Plant2 position", (float*)&programState->plant2Position);
-        ImGui::DragFloat("Plant2 scale", &programState->plant2Scale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Plant3 position", (float*)&programState->plant3Position);
-        ImGui::DragFloat("Plant3 scale", &programState->plant3Scale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Bookopen position", (float*)&programState->bookopenPosition);
-        ImGui::DragFloat("Bookopen scale", &programState->bookopenScale, 0.05, 0.1, 4.0);
-
-        ImGui::DragFloat3("Table position", (float*)&programState->tablePosition);
-        ImGui::DragFloat("Table scale", &programState->tableScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Floor position", (float*)&programState->floorPosition);
-        ImGui::DragFloat("Floor scale", &programState->floorScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Bookcase position", (float*)&programState->bookcasePosition);
-        ImGui::DragFloat("Bookcase scale", &programState->bookcaseScale, 0.05,0.1,4.0);
+//        ImGui::DragFloat3("Portal position", (float*)&programState->portalPosition);
+//        ImGui::DragFloat("Portal scale", &programState->portalScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Arch position", (float*)&programState->archPosition);
+//        ImGui::DragFloat("Arch scale", &programState->archScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Prozor position", (float*)&programState->prozorPosition);
+//        ImGui::DragFloat("Prozor scale", &programState->prozorScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Lamp position", (float*)&programState->lampPosition);
+//        ImGui::DragFloat("Lamp scale", &programState->lampScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Candle1 position", (float*)&programState->candle1Position);
+//        ImGui::DragFloat("Candle1 scale", &programState->candle1Scale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Candle2 position", (float*)&programState->candle2Position);
+//        ImGui::DragFloat("Candle2 scale", &programState->candle2Scale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("FloorGlobe position", (float*)&programState->floorglobePosition);
+//        ImGui::DragFloat("FloorGlobe scale", &programState->floorglobeScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Globe position", (float*)&programState->globePostiotn);
+//        ImGui::DragFloat("Globe scale", &programState->globeScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Book Stack position", (float*)&programState->bookStackPostiotn);
+//        ImGui::DragFloat("Book Stack scale", &programState->bookStackScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Potion position", (float*)&programState->potionPostiotn);
+//        ImGui::DragFloat("Potion scale", &programState->potionScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Plant position", (float*)&programState->plantPosition);
+//        ImGui::DragFloat("Plant scale", &programState->plantScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Plant1 position", (float*)&programState->plant1Position);
+//        ImGui::DragFloat("Plant1 scale", &programState->plant1Scale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Plant2 position", (float*)&programState->plant2Position);
+//        ImGui::DragFloat("Plant2 scale", &programState->plant2Scale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Plant3 position", (float*)&programState->plant3Position);
+//        ImGui::DragFloat("Plant3 scale", &programState->plant3Scale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Bookopen position", (float*)&programState->bookopenPosition);
+//        ImGui::DragFloat("Bookopen scale", &programState->bookopenScale, 0.05, 0.1, 4.0);
+//
+//        ImGui::DragFloat3("Table position", (float*)&programState->tablePosition);
+//        ImGui::DragFloat("Table scale", &programState->tableScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Floor position", (float*)&programState->floorPosition);
+//        ImGui::DragFloat("Floor scale", &programState->floorScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Bookcase position", (float*)&programState->bookcasePosition);
+//        ImGui::DragFloat("Bookcase scale", &programState->bookcaseScale, 0.05,0.1,4.0);
 
         ImGui::DragFloat("pointLight.constant", &programState->pointLight.constant, 0.05, 0.0, 1.0);
         ImGui::DragFloat("pointLight.linear", &programState->pointLight.linear, 0.05, 0.0, 1.0);
         ImGui::DragFloat("pointLight.quadratic", &programState->pointLight.quadratic, 0.05, 0.0, 1.0);
 
-        ImGui::DragFloat("pointLight.ambient", &programState->A);
-        ImGui::DragFloat("pointLight.diffuse", &programState->B);
-        ImGui::DragFloat("pointLight.specular", &programState->C);
+        ImGui::DragFloat3("pointLight.ambient", (float*)&programState->pointLight.ambient);
+        ImGui::DragFloat3("pointLight.diffuse", (float*)&programState->pointLight.diffuse);
+        ImGui::DragFloat3("pointLight.specular", (float*)&programState->pointLight.specular);
 
 
         ImGui::End();
@@ -941,7 +1030,7 @@ unsigned int loadCubemap(vector<std::string>& faces){
         if(data) {
             glTexImage2D(
                     GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                    0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                    0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
         }else{
             std::cerr << "Failed to load cubemap face at path: " << faces[i] << '\n';
         }
