@@ -23,7 +23,7 @@ in vec2 TexCoords;
 in vec3 Normal;
 in vec3 FragPos;
 
-uniform PointLight pointLight;
+uniform PointLight pointLights[9];
 uniform Material material;
 
 uniform vec3 viewPosition;
@@ -58,6 +58,9 @@ void main()
     if(TexColor.a < 0.7) {
         discard;
     }
-    vec3 result = CalcPointLight(pointLight, normal, FragPos, viewDir);
+    vec3 result = vec3(0.0);
+    for(int i = 0; i < 9; i++) {
+        result += CalcPointLight(pointLights[i], normal, FragPos, viewDir);
+    }
     FragColor = vec4(result, 1.0);
 }

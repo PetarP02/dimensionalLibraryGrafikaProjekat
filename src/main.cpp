@@ -105,6 +105,10 @@ struct ProgramState {
     Camera camera;
     bool CameraMouseMovementUpdateEnabled = true;
 
+    float A = 0.01;
+    float B = 0.01;
+    float C = 0.01;
+
     glm::vec3 prozorPosition = glm::vec3(-6.0f, 5.79f, 8.3f);
     float prozorScale = 2.35f;
 
@@ -120,7 +124,7 @@ struct ProgramState {
     glm::vec3 candle2Position = glm::vec3(-0.5f, 11.9f, 1.5f);
     float candle2Scale = 3.7f;
 
-    glm::vec3 floorglobePosition = glm::vec3(18.0f, 4.9f, -12.5f);
+    glm::vec3 floorglobePosition = glm::vec3(5.0f, 4.9f, -10.5f);
     float floorglobeScale = 0.06f;
 
     glm::vec3 lampPosition = glm::vec3(16.0f, 5.7f, 15.0f);
@@ -359,20 +363,34 @@ int main() {
 
 
     PointLight& pointLight = programState->pointLight;
-    pointLight.position = glm::vec3(8.0f, 13.0f, 1.0f);
-    pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
-    pointLight.diffuse = glm::vec3(0.6, 0.6, 0.6);
-    pointLight.specular = glm::vec3(1.0, 1.0, 1.0);
+    //pointLight.position = glm::vec3(8.0f, 13.0f, 1.0f);
+    pointLight.ambient = glm::vec3(0.005f);
+    pointLight.diffuse = glm::vec3(1.0f, 0.77f, 0.35f);
+    pointLight.specular = glm::vec3(1.0f, 0.77f, 0.35f);
 
-    pointLight.constant = 1.0f;
-    pointLight.linear = 1.0f;
-    pointLight.quadratic = 1.0f;
+    pointLight.constant = 10.0f;
+    pointLight.linear = 30.0f;
+    pointLight.quadratic = 30.0f;
+
+    //pozicija plamena svake svece
+    vector<glm::vec3> sveceSvetlo = {
+            glm::vec3 (-0.298f, 12.49f, 1.649f),
+            glm::vec3 (-0.417f, 12.658f, 1.275f),
+            glm::vec3 (-0.518f, 12.984f, 1.484f),
+            glm::vec3 (1.713f, 11.543f, -2.497f),
+            glm::vec3 (1.392f, 11.260f, -2.630f),
+            glm::vec3 (1.293f, 11.151f, -2.282f),
+            glm::vec3 (1.729f, 10.508f, 2.998f),
+            glm::vec3 (1.291f, 10.109f, 3.254f),
+            glm::vec3 (1.355f, 10.223f, 2.812f)
+    };
 
     // draw in wireframe
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // render loop
     // -----------
+
     while (!glfwWindowShouldClose(window)) {
         // per-frame time logic
         // --------------------
@@ -391,14 +409,15 @@ int main() {
 
         // don't forget to enable shader before setting uniforms
         ourShader.use();
-        pointLight.position = glm::vec3(8.0f, 13.0f, 1.0f);
-        ourShader.setVec3("pointLight.position", programState->camera.Position);
-        ourShader.setVec3("pointLight.ambient", pointLight.ambient);
-        ourShader.setVec3("pointLight.diffuse", pointLight.diffuse);
-        ourShader.setVec3("pointLight.specular", pointLight.specular);
-        ourShader.setFloat("pointLight.constant", pointLight.constant);
-        ourShader.setFloat("pointLight.linear", pointLight.linear);
-        ourShader.setFloat("pointLight.quadratic", pointLight.quadratic);
+        for(int i = 0; i < 9; i++) {
+            ourShader.setVec3("pointLights["+ to_string(i) +"].position", sveceSvetlo[i]);
+            ourShader.setVec3("pointLights["+ to_string(i) +"].ambient", pointLight.ambient);
+            ourShader.setVec3("pointLights["+ to_string(i) +"].diffuse", pointLight.diffuse);
+            ourShader.setVec3("pointLights["+ to_string(i) +"].specular", pointLight.specular);
+            ourShader.setFloat("pointLights["+ to_string(i) +"].constant", pointLight.constant);
+            ourShader.setFloat("pointLights["+ to_string(i) +"].linear", pointLight.linear);
+            ourShader.setFloat("pointLights["+ to_string(i) +"].quadratic", pointLight.quadratic);
+        }
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
         // view/projection transformations
@@ -425,19 +444,19 @@ int main() {
         ourShader.setMat4("model", model);
         portal.Draw(ourShader);
 
-        model = glm::mat4(1.0f);
-        model = glm::translate(model,programState->prozorPosition); // translate it down so it's at the center of the scene
-        model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0, 1, 0));
-        model = glm::scale(model, glm::vec3(programState->prozorScale));    // it's a bit too big for our scene, so scale it down
-        ourShader.setMat4("model", model);
-        prozor.Draw(ourShader);
-
-        model = glm::mat4(1.0f);
-        model = glm::translate(model,glm::vec3(-6.0f, 5.79f, -8.3f)); // translate it down so it's at the center of the scene
-        model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0, 1, 0));
-        model = glm::scale(model, glm::vec3(programState->prozorScale));    // it's a bit too big for our scene, so scale it down
-        ourShader.setMat4("model", model);
-        prozor.Draw(ourShader);
+//        model = glm::mat4(1.0f);
+//        model = glm::translate(model,programState->prozorPosition); // translate it down so it's at the center of the scene
+//        model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0, 1, 0));
+//        model = glm::scale(model, glm::vec3(programState->prozorScale));    // it's a bit too big for our scene, so scale it down
+//        ourShader.setMat4("model", model);
+//        prozor.Draw(ourShader);
+//
+//        model = glm::mat4(1.0f);
+//        model = glm::translate(model,glm::vec3(-6.0f, 5.79f, -8.3f)); // translate it down so it's at the center of the scene
+//        model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0, 1, 0));
+//        model = glm::scale(model, glm::vec3(programState->prozorScale));    // it's a bit too big for our scene, so scale it down
+//        ourShader.setMat4("model", model);
+//        prozor.Draw(ourShader);
 
         model = glm::mat4(1.0f);
         model = glm::translate(model,programState->bookopenPosition); // translate it down so it's at the center of the scene
@@ -873,6 +892,11 @@ void DrawImGui(ProgramState *programState) {
         ImGui::DragFloat("pointLight.constant", &programState->pointLight.constant, 0.05, 0.0, 1.0);
         ImGui::DragFloat("pointLight.linear", &programState->pointLight.linear, 0.05, 0.0, 1.0);
         ImGui::DragFloat("pointLight.quadratic", &programState->pointLight.quadratic, 0.05, 0.0, 1.0);
+
+        ImGui::DragFloat("pointLight.ambient", &programState->A);
+        ImGui::DragFloat("pointLight.diffuse", &programState->B);
+        ImGui::DragFloat("pointLight.specular", &programState->C);
+
 
         ImGui::End();
     }
