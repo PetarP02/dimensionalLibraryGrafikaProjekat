@@ -39,14 +39,55 @@ in vec2 TexCoords;
 in vec3 Normal;
 in vec3 FragPos;
 
-uniform PointLight pointLights[9];
+uniform PointLight pointLights[3];
+uniform PointLight luster;
 uniform SpotLight spotLights[3];
 uniform SpotLight portalLight; //spotlight
 uniform Material material;
 
+uniform samplerCube depthMap;
+uniform float far_plane;
+uniform bool shadows;
 uniform vec3 viewPosition;
+
+// array of offset direction for sampling
+vec3 gridSamplingDisk[20] = vec3[]
+(
+   vec3(1, 1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1, 1,  1),
+   vec3(1, 1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1, 1, -1),
+   vec3(1, 1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1, 1,  0),
+   vec3(1, 0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1, 0, -1),
+   vec3(0, 1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0, 1, -1)
+);
+
+float ShadowCalculation(vec3 fragPos)
+{
+    // get vector between fragment position and light position
+        vec3 fragToLight = fragPos - luster.position;
+
+        float currentDepth = length(fragToLight);
+
+        float shadow = 0.0;
+        float bias = 0.15;
+        int samples = 20;
+        float viewDistance = length(viewPosition - fragPos);
+        float diskRadius = (1.0 + (viewDistance / far_plane)) / 25.0;
+        for(int i = 0; i < samples; ++i)
+        {
+            float closestDepth = texture(depthMap, fragToLight + gridSamplingDisk[i] * diskRadius).r;
+
+            closestDepth *= far_plane;   // undo mapping [0;1]
+            if(currentDepth - bias > closestDepth)
+                shadow += 1.0;
+        }
+
+        shadow /= float(samples);
+
+        return shadow;
+}
+
 // calculates the color when using a point light.
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec4 texColor)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading
@@ -65,7 +106,10 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;
-    return (ambient + diffuse + specular);
+
+    float shadow = ShadowCalculation(fragPos);
+
+    return (ambient + (diffuse + specular)*(1-shadow))*texColor.rgb;
 }
 
 vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
@@ -105,13 +149,15 @@ void main()
     }
 
     vec3 result = vec3(0.0);
-    for(int i = 0; i < 9; i++) {
-        result += CalcPointLight(pointLights[i], normal, FragPos, viewDir);
+    for(int i = 0; i < 3; i++) {
+       result += CalcPointLight(pointLights[i], normal, FragPos, viewDir, TexColor);
     }
 
     for(int i = 0; i < 3; i++) {
-        result += CalcSpotLight(spotLights[i], normal, FragPos, viewDir);
+       result += CalcSpotLight(spotLights[i], normal, FragPos, viewDir);
     }
+
+    result += CalcPointLight(luster, normal, FragPos, viewDir, TexColor);
 
     result += CalcSpotLight(portalLight, normal, FragPos, viewDir);
 
