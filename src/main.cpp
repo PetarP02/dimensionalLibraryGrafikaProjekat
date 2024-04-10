@@ -249,7 +249,7 @@ int main() {
 
     // glfw window creation
     // --------------------
-    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Dimensional Library", NULL, NULL);
     if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -979,8 +979,7 @@ void DrawImGui(ProgramState *programState) {
 
     {
         static float f = 0.0f;
-        ImGui::Begin("Hello window");
-        ImGui::Text("Hello text");
+        ImGui::Begin("Pozicioniranje i skaliranje");
         ImGui::SliderFloat("Float slider", &f, 0.0, 1.0);
         ImGui::ColorEdit3("Background color", (float *) &programState->clearColor);
 
@@ -993,8 +992,8 @@ void DrawImGui(ProgramState *programState) {
 //        ImGui::DragFloat3("Prozor position", (float*)&programState->prozorPosition);
 //        ImGui::DragFloat("Prozor scale", &programState->prozorScale, 0.05,0.1,4.0);
 //
-        ImGui::DragFloat3("Lamp position", (float*)&programState->lampPosition);
-        ImGui::DragFloat("Lamp scale", &programState->lampScale, 0.05,0.1,4.0);
+//        ImGui::DragFloat3("Lamp position", (float*)&programState->lampPosition);
+//        ImGui::DragFloat("Lamp scale", &programState->lampScale, 0.05,0.1,4.0);
 //
 //        ImGui::DragFloat3("Candle1 position", (float*)&programState->candle1Position);
 //        ImGui::DragFloat("Candle1 scale", &programState->candle1Scale, 0.05,0.1,4.0);
@@ -1002,8 +1001,8 @@ void DrawImGui(ProgramState *programState) {
 //        ImGui::DragFloat3("Candle2 position", (float*)&programState->candle2Position);
 //        ImGui::DragFloat("Candle2 scale", &programState->candle2Scale, 0.05,0.1,4.0);
 //
-        ImGui::DragFloat3("FloorGlobe position", (float*)&programState->floorglobePosition);
-        ImGui::DragFloat("FloorGlobe scale", &programState->floorglobeScale, 0.05,0.1,4.0);
+//        ImGui::DragFloat3("FloorGlobe position", (float*)&programState->floorglobePosition);
+//        ImGui::DragFloat("FloorGlobe scale", &programState->floorglobeScale, 0.05,0.1,4.0);
 //
 //        ImGui::DragFloat3("Globe position", (float*)&programState->globePostiotn);
 //        ImGui::DragFloat("Globe scale", &programState->globeScale, 0.05,0.1,4.0);
@@ -1014,17 +1013,17 @@ void DrawImGui(ProgramState *programState) {
 //        ImGui::DragFloat3("Potion position", (float*)&programState->potionPostiotn);
 //        ImGui::DragFloat("Potion scale", &programState->potionScale, 0.05,0.1,4.0);
 //
-        ImGui::DragFloat3("Plant position", (float*)&programState->plantPosition);
-        ImGui::DragFloat("Plant scale", &programState->plantScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Plant1 position", (float*)&programState->plant1Position);
-        ImGui::DragFloat("Plant1 scale", &programState->plant1Scale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Plant2 position", (float*)&programState->plant2Position);
-        ImGui::DragFloat("Plant2 scale", &programState->plant2Scale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Plant3 position", (float*)&programState->plant3Position);
-        ImGui::DragFloat("Plant3 scale", &programState->plant3Scale, 0.05,0.1,4.0);
+//        ImGui::DragFloat3("Plant position", (float*)&programState->plantPosition);
+//        ImGui::DragFloat("Plant scale", &programState->plantScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Plant1 position", (float*)&programState->plant1Position);
+//        ImGui::DragFloat("Plant1 scale", &programState->plant1Scale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Plant2 position", (float*)&programState->plant2Position);
+//        ImGui::DragFloat("Plant2 scale", &programState->plant2Scale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Plant3 position", (float*)&programState->plant3Position);
+//        ImGui::DragFloat("Plant3 scale", &programState->plant3Scale, 0.05,0.1,4.0);
 //
 //        ImGui::DragFloat3("Bookopen position", (float*)&programState->bookopenPosition);
 //        ImGui::DragFloat("Bookopen scale", &programState->bookopenScale, 0.05, 0.1, 4.0);
@@ -1038,10 +1037,10 @@ void DrawImGui(ProgramState *programState) {
 //        ImGui::DragFloat3("Bookcase position", (float*)&programState->bookcasePosition);
 //        ImGui::DragFloat("Bookcase scale", &programState->bookcaseScale, 0.05,0.1,4.0);
 
-        ImGui::DragFloat3("Luster position", (float*)&programState->lusterPosition);
-        ImGui::DragFloat("Luster scale", &programState->lusterScale, 0.05,0.1,4.0);
-
-        ImGui::DragFloat3("Svetlo poz", (float*)&programState->svetloPoz);
+//        ImGui::DragFloat3("Luster position", (float*)&programState->lusterPosition);
+//        ImGui::DragFloat("Luster scale", &programState->lusterScale, 0.05,0.1,4.0);
+//
+//        ImGui::DragFloat3("Svetlo poz", (float*)&programState->svetloPoz);
 
         ImGui::DragFloat("pointLight.constant", &programState->pointLight.constant, 0.05, 0.0, 1.0);
         ImGui::DragFloat("pointLight.linear", &programState->pointLight.linear, 0.05, 0.0, 1.0);
