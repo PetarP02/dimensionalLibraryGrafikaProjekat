@@ -16,6 +16,8 @@
 
 #include <iostream>
 
+void renderQuad();
+
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -131,6 +133,7 @@ struct ProgramState {
     Camera camera;
     bool CameraMouseMovementUpdateEnabled = true;
 
+    bool hdr = true;
 
     glm::vec3 prozorPosition = glm::vec3(-6.0f, 5.79f, 8.3f);
     float prozorScale = 2.35f;
@@ -300,6 +303,31 @@ int main() {
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
     Shader simpleDepthShader("resources/shaders/pointShadowsDepth.vs", "resources/shaders/pointShadowsDepth.fs", "resources/shaders/pointShadowsDepth.gs"); //Shadows
 
+    //hdr
+    Shader hdrShader("resources/shaders/hdr.vs", "resources/shaders/hdr.fs");
+
+    unsigned int hdrFBO;
+    glGenFramebuffers(1, &hdrFBO);
+
+    unsigned int colorBuffer;
+    glGenTextures(1, &colorBuffer);
+    glBindTexture(GL_TEXTURE_2D, colorBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    unsigned int rboDepth;
+    glGenRenderbuffers(1, &rboDepth);
+    glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "Framebuffer not complete!" << std::endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
     // skybox
     unsigned int skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
@@ -402,23 +430,23 @@ int main() {
 
     PointLight& pointLight = programState->pointLight;
     pointLight.ambient = glm::vec3(0.05f);
-    pointLight.diffuse = glm::vec3(1.0f, 0.77f, 0.35f);
+    pointLight.diffuse = glm::vec3(80.0f, 40.0f, 15.0f);
     pointLight.specular = glm::vec3(1.0f, 0.77f, 0.35f);
 
-    pointLight.constant = 0.15f;
+    pointLight.constant = 1.0f;
     pointLight.linear = 1.0f;
-    pointLight.quadratic = 1.0f;
+    pointLight.quadratic = 5.0f;
 
     SpotLight& spotLight = programState->spotLight;
     spotLight.ambient = glm::vec3(0.2f);
-    spotLight.diffuse = glm::vec3(0.7f, 0.5f, 0.5f);
+    spotLight.diffuse = glm::vec3(15.0f, 5.0f, 0.0f);
     spotLight.specular = glm::vec3(0.7f, 0.5f, 0.5f);
 
     spotLight.constant = 1.0f;
     spotLight.linear = 0.05f;
-    spotLight.quadratic = 0.009f;
+    spotLight.quadratic = 0.05f;
 
-    spotLight.cutOff = 15.0f;
+    spotLight.cutOff = 5.0f;
     spotLight.outerCutOff = 23.0f;
 
     //pozicija plamena svake svece
@@ -469,7 +497,7 @@ int main() {
         shadowTransforms.push_back(shadowProj * glm::lookAt(programState->svetloPoz, programState->svetloPoz + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
         shadowTransforms.push_back(shadowProj * glm::lookAt(programState->svetloPoz, programState->svetloPoz + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
 
-//         1. render scene to depth cubemap
+        //         1. render scene to depth cubemap
         // --------------------------------
         glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
         glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
@@ -486,6 +514,11 @@ int main() {
         glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        //hdr render
+        glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom), (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = programState->camera .GetViewMatrix();
 
         // don't forget to enable shader before setting uniforms
         ourShader.use();
@@ -493,12 +526,12 @@ int main() {
         ourShader.setVec3("luster.position", programState->svetloPoz);
 
         ourShader.setVec3("luster.ambient", glm::vec3(0.3f));
-        ourShader.setVec3("luster.diffuse", glm::vec3(1.0f));
-        ourShader.setVec3("luster.specular", glm::vec3(1.0f));
+        ourShader.setVec3("luster.diffuse", glm::vec3(50.0f, 10.0f, 5.0f));
+        ourShader.setVec3("luster.specular", glm::vec3(1.0f, 0.77f, 0.35f));
 
         ourShader.setFloat("luster.constant", 1.0f);
-        ourShader.setFloat("luster.linear", 0.0002f);
-        ourShader.setFloat("luster.quadratic", 0.001f);
+        ourShader.setFloat("luster.linear", 0.5f);
+        ourShader.setFloat("luster.quadratic", 0.3f);
 
         for(int i = 0; i < 3; i++) {
             ourShader.setVec3("pointLights["+ to_string(i) +"].position", sveceSvetlo[i]);
@@ -532,12 +565,12 @@ int main() {
         ourShader.setVec3("portalLight.direction", glm::vec3 (-1, 0, 0));
 
         ourShader.setVec3("portalLight.ambient", spotLight.ambient);
-        ourShader.setVec3("portalLight.diffuse", glm::vec3(0.1f, 1.00f, 0.33f));
+        ourShader.setVec3("portalLight.diffuse", glm::vec3(1.0f, 30.0f, 10.0f));
         ourShader.setVec3("portalLight.specular", glm::vec3(0.1f, 1.00f, 0.33f));
 
-        ourShader.setFloat("portalLight.constant", 0.8f);
+        ourShader.setFloat("portalLight.constant", 1.0f);
         ourShader.setFloat("portalLight.linear", 0.01f);
-        ourShader.setFloat("portalLight.quadratic", 0.01f);
+        ourShader.setFloat("portalLight.quadratic", 0.1f);
 
         ourShader.setFloat("portalLight.cutOff", glm::cos(glm::radians(45.0f)));
         ourShader.setFloat("portalLight.outerCutOff", glm::cos(glm::radians(60.0f)));
@@ -545,9 +578,9 @@ int main() {
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
         // view/projection transformations
-        glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
+        projection = glm::perspective(glm::radians(programState->camera.Zoom),
                                                 (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 view = programState->camera.GetViewMatrix();
+        view = programState->camera.GetViewMatrix();
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
         ourShader.setFloat("far_plane", far_plane);
@@ -574,6 +607,16 @@ int main() {
 
         glDepthMask(GL_TRUE);
         glDepthFunc(GL_LESS);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        //hdr 3.
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        hdrShader.use();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, colorBuffer);
+        hdrShader.setBool("hdr", programState->hdr);
+        hdrShader.setFloat("exposure", exposure);
+        renderQuad();
 
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
@@ -983,6 +1026,8 @@ void DrawImGui(ProgramState *programState) {
         ImGui::SliderFloat("Float slider", &f, 0.0, 1.0);
         ImGui::ColorEdit3("Background color", (float *) &programState->clearColor);
 
+        ImGui::Checkbox("HDR", (bool* ) &programState->hdr);
+
 //        ImGui::DragFloat3("Portal position", (float*)&programState->portalPosition);
 //        ImGui::DragFloat("Portal scale", &programState->portalScale, 0.05,0.1,4.0);
 //
@@ -1202,4 +1247,33 @@ void createFBO(unsigned int& depthMapFBO, unsigned int& depthCubemap, float SHAD
     glDrawBuffer(GL_NONE);
     glReadBuffer(GL_NONE);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+{
+    if (quadVAO == 0)
+    {
+        float quadVertices[] = {
+                // positions        // texture Coords
+                -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+                -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+                1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        };
+        // setup plane VAO
+        glGenVertexArrays(1, &quadVAO);
+        glGenBuffers(1, &quadVBO);
+        glBindVertexArray(quadVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    }
+    glBindVertexArray(quadVAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
 }
