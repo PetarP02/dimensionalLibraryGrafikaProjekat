@@ -613,6 +613,7 @@ int main() {
         ourShader.setVec3("portalLight1.ambient", spotLight.ambient);
         ourShader.setVec3("portalLight1.diffuse", glm::vec3(1.0f, 30.0f, 10.0f));
         ourShader.setVec3("portalLight1.specular", glm::vec3(0.1f, 1.00f, 0.33f));
+        //:)
 
         ourShader.setFloat("portalLight.constant", 1.0f);
         ourShader.setFloat("portalLight.linear", 0.01f);
