@@ -1,5 +1,6 @@
 #version 330 core
-out vec4 FragColor;
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;
 
 struct PointLight {
     vec3 position;
@@ -42,7 +43,7 @@ in vec3 FragPos;
 uniform PointLight pointLights[3];
 uniform PointLight luster;
 uniform SpotLight spotLights[3];
-uniform SpotLight portalLight; //spotlight
+uniform SpotLight portalLight, portalLight1; //spotlight
 uniform Material material;
 
 uniform samplerCube depthMap;
@@ -160,6 +161,12 @@ void main()
     result += CalcPointLight(luster, normal, FragPos, viewDir, TexColor);
 
     result += CalcSpotLight(portalLight, normal, FragPos, viewDir);
+    result += CalcSpotLight(portalLight1, normal, FragPos, viewDir);
 
     FragColor = vec4(result, 1.0);
+    float brightness = dot(FragColor.rgb, vec3(0.2126f, 0.7152f, 0.0722f));
+    if(brightness > 1.0f)
+        BrightColor = vec4(FragColor.rgb, 1.0f);
+    else
+        BrightColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 }

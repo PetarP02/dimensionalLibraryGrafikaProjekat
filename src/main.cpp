@@ -134,6 +134,7 @@ struct ProgramState {
     bool CameraMouseMovementUpdateEnabled = true;
 
     bool hdr = true;
+    bool bloom = true;
 
     glm::vec3 prozorPosition = glm::vec3(-6.0f, 5.79f, 8.3f);
     float prozorScale = 2.35f;
@@ -303,30 +304,64 @@ int main() {
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
     Shader simpleDepthShader("resources/shaders/pointShadowsDepth.vs", "resources/shaders/pointShadowsDepth.fs", "resources/shaders/pointShadowsDepth.gs"); //Shadows
 
-    //hdr
+    //hdr + bloom
     Shader hdrShader("resources/shaders/hdr.vs", "resources/shaders/hdr.fs");
+    Shader blurShader("resources/shaders/blur.vs", "resources/shaders/blur.fs");
 
     unsigned int hdrFBO;
     glGenFramebuffers(1, &hdrFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
 
-    unsigned int colorBuffer;
-    glGenTextures(1, &colorBuffer);
-    glBindTexture(GL_TEXTURE_2D, colorBuffer);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    unsigned int colorBuffers[2];
+    glGenTextures(2, colorBuffers);
+
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        // attach texture to framebuffer
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorBuffers[i], 0);
+    }
 
     unsigned int rboDepth;
     glGenRenderbuffers(1, &rboDepth);
     glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, hdrFBO);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+    // tell OpenGL which color attachments we'll use (of this framebuffer) for rendering
+    unsigned int attachments[2] = {
+            GL_COLOR_ATTACHMENT0,
+            GL_COLOR_ATTACHMENT1
+    };
+    glDrawBuffers(2, attachments);
+    // finally check if framebuffer is complete
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "Framebuffer not complete!" << std::endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    //pingpong baferi
+    unsigned int pingpongFBO[2];
+    unsigned int pingpongColorbuffers[2];
+    glGenFramebuffers(2, pingpongFBO);
+    glGenTextures(2, pingpongColorbuffers);
+    for (unsigned int i = 0; i < 2; i++)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+        glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColorbuffers[i], 0);
+        // also check if framebuffers are complete (no need for depth buffer)
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            std::cout << "Framebuffer not complete!" << std::endl;
+    }
 
     // skybox
     unsigned int skyboxVAO, skyboxVBO;
@@ -365,6 +400,11 @@ int main() {
     ourShader.setInt("material.texture_diffuse1", 0);
     ourShader.setInt("material.texture_specular1", 1);
     ourShader.setInt("depthMap", 2); //vezemo depthMap sa nasim shaderom
+    blurShader.use();
+    blurShader.setInt("image", 0);
+    hdrShader.use();
+    hdrShader.setInt("hdrBuffer", 0);
+    hdrShader.setInt("bloomBlur", 1);
 
     // load models
     // -----------
@@ -519,6 +559,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom), (GLfloat)SCR_WIDTH / (GLfloat)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = programState->camera .GetViewMatrix();
+        glm::mat4 model = glm::mat4(1.0f);
 
         // don't forget to enable shader before setting uniforms
         ourShader.use();
@@ -561,19 +602,29 @@ int main() {
             ourShader.setFloat("spotLights["+ to_string(i) +"].outerCutOff", glm::cos(glm::radians(spotLight.outerCutOff)));
         }
 
-        ourShader.setVec3("portalLight.position", glm::vec3(22.839f, 10.788f, -0.375f));
+        ourShader.setVec3("portalLight.position", glm::vec3(21.759f, 11.266f, -0.581f));
         ourShader.setVec3("portalLight.direction", glm::vec3 (-1, 0, 0));
+        ourShader.setVec3("portalLight1.position", glm::vec3(18.759f, 11.266f, -0.581f));
+        ourShader.setVec3("portalLight1.direction", glm::vec3 (1, 0, 0));
 
         ourShader.setVec3("portalLight.ambient", spotLight.ambient);
         ourShader.setVec3("portalLight.diffuse", glm::vec3(1.0f, 30.0f, 10.0f));
         ourShader.setVec3("portalLight.specular", glm::vec3(0.1f, 1.00f, 0.33f));
+        ourShader.setVec3("portalLight1.ambient", spotLight.ambient);
+        ourShader.setVec3("portalLight1.diffuse", glm::vec3(1.0f, 30.0f, 10.0f));
+        ourShader.setVec3("portalLight1.specular", glm::vec3(0.1f, 1.00f, 0.33f));
 
         ourShader.setFloat("portalLight.constant", 1.0f);
         ourShader.setFloat("portalLight.linear", 0.01f);
         ourShader.setFloat("portalLight.quadratic", 0.1f);
+        ourShader.setFloat("portalLight1.constant", 1.0f);
+        ourShader.setFloat("portalLight1.linear", 0.01f);
+        ourShader.setFloat("portalLight1.quadratic", 0.1f);
 
         ourShader.setFloat("portalLight.cutOff", glm::cos(glm::radians(45.0f)));
         ourShader.setFloat("portalLight.outerCutOff", glm::cos(glm::radians(60.0f)));
+        ourShader.setFloat("portalLight1.cutOff", glm::cos(glm::radians(45.0f)));
+        ourShader.setFloat("portalLight1.outerCutOff", glm::cos(glm::radians(60.0f)));
 
         ourShader.setVec3("viewPosition", programState->camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
@@ -609,11 +660,30 @@ int main() {
         glDepthFunc(GL_LESS);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        //BLOOM
+        bool horizontal = true, first_iteration = true;
+        unsigned int amount = 10;
+        blurShader.use();
+        for (unsigned int i = 0; i < amount; i++)
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+            blurShader.setInt("horizontal", horizontal);
+            glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);  // bind texture of other framebuffer (or scene if first iteration)
+            renderQuad();
+            horizontal = !horizontal;
+            if (first_iteration)
+                first_iteration = false;
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
         //hdr 3.
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         hdrShader.use();
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, colorBuffer);
+        glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
+        hdrShader.setBool("bloom", programState->bloom);
         hdrShader.setBool("hdr", programState->hdr);
         hdrShader.setFloat("exposure", exposure);
         renderQuad();
@@ -1027,6 +1097,8 @@ void DrawImGui(ProgramState *programState) {
         ImGui::ColorEdit3("Background color", (float *) &programState->clearColor);
 
         ImGui::Checkbox("HDR", (bool* ) &programState->hdr);
+        ImGui::Checkbox("BLOOM", (bool* ) &programState->bloom);
+
 
 //        ImGui::DragFloat3("Portal position", (float*)&programState->portalPosition);
 //        ImGui::DragFloat("Portal scale", &programState->portalScale, 0.05,0.1,4.0);

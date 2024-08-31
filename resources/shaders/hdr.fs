@@ -4,14 +4,20 @@ out vec4 FragColor;
 in vec2 TexCoords;
 
 uniform sampler2D hdrBuffer;
+uniform sampler2D bloomBlur;
 uniform bool hdr;
+uniform bool bloom;
 uniform float exposure;
 
 void main()
 {
     vec3 hdrColor = texture(hdrBuffer, TexCoords).rgb;
+    vec3 bloomColor = texture(bloomBlur, TexCoords).rgb;
     vec3 result;
-    // exposure
+
+    if(bloom)
+        hdrColor += bloomColor;
+
     if(hdr){
         result = vec3(1.0) - exp(-hdrColor * exposure);
     }else {
